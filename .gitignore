@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# build output
+web/dist/
+
+# runtime data (database, generated covers, repack cache, trash)
+data/
+
+# local test videos
+videos/
+
+# fpk build artifacts
+fnos/**/*.fpk
+fnos/**/build/
+
+# fnpack 二进制由 tools/build-fpk.mjs 按平台自动下载，不入库
+tools/bin/
+
+# env
+.env
+.env.local
+
+# logs, editors, OS junk
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

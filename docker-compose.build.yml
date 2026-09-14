@@ -1,0 +1,10 @@
+# 本地构建镜像的覆盖文件（不推送任何镜像仓库时使用）
+#
+# 用法：docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+
+services:
+  douyin-local:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: douyin-local:local

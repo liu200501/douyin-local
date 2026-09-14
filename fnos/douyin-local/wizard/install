@@ -1,0 +1,27 @@
+[
+  {
+    "stepTitle": "选择视频目录",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "填写宿主机上存放短视频的目录绝对路径，它会以可写方式挂载进容器（网页上传、删除需要写权限）。\n飞牛常见路径形如 /vol1/1000/视频 或 /vol1/1000/videos；可以填某个存储空间的子目录，例如 /vol2/2000/shorts。\n安装完成后随时可以在「应用设置」里修改。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_video_dir",
+        "label": "视频目录",
+        "initValue": "/vol1/1000/videos",
+        "rules": [
+          {
+            "required": true,
+            "message": "请填写视频目录的绝对路径"
+          },
+          {
+            "pattern": "^/.+",
+            "message": "请填写以 / 开头的绝对路径"
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,82 @@
+# douyin-local — 本地短视频播放器
+#
+# 用法：
+#   1) 复制 .env.example 为 .env，改掉 IMAGE 和 VIDEO_HOST_DIR
+#   2) docker compose pull && docker compose up -d
+#   3) 打开 http://<NAS_IP>:6688
+#
+# 只想本地构建镜像：docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# 需要 Intel 核显硬件加速：追加 -f docker-compose.hwaccel.yml
+
+services:
+  douyin-local:
+    image: ${IMAGE:-ghcr.io/gaoyubao0917/douyin-local:latest}
+    container_name: douyin-local
+    restart: unless-stopped
+
+    ports:
+      # 左边是宿主机端口，可用 .env 里的 PORT 覆盖
+      - "${PORT:-6688}:6688"
+
+    environment:
+      # ---- 服务 ----
+      PORT: 6688
+      HOST: 0.0.0.0
+      TZ: ${TZ:-Asia/Shanghai}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      # ---- 数据 ----
+      # SQLite 数据库、生成的封面、换封装缓存、回收站都在这里
+      DATA_DIR: /data
+      CACHE_DIR: /data/cache
+
+      # ---- 视频库 ----
+      # 容器内路径，必须和下面的 volumes 目标路径保持一致
+      VIDEO_DIRS: /media/videos
+      # 想让播放器只索引某几个扩展名时改这里
+      VIDEO_EXTS: ${VIDEO_EXTS:-mp4,m4v,mov,webm,ogv,mkv,avi,flv,ts,m2ts,wmv,mpg,mpeg,3gp}
+      # 可选：上传目标目录留空则使用第一个视频目录
+      UPLOAD_DIR: ${UPLOAD_DIR:-}
+
+      # ---- 性能 ----
+      # 同时运行的 ffmpeg 任务数，NAS 上建议 1~2
+      JOB_CONCURRENCY: ${JOB_CONCURRENCY:-2}
+      FFMPEG_THREADS: ${FFMPEG_THREADS:-1}
+      # auto 会探测 /dev/dri，没有就用 CPU
+      HWACCEL: ${HWACCEL:-auto}
+
+      # ---- 扫描 ----
+      SCAN_ON_START: ${SCAN_ON_START:-true}
+      # 大于 0 时按秒轮询增量扫描，例如 3600
+      RESCAN_INTERVAL: ${RESCAN_INTERVAL:-0}
+
+    volumes:
+      # 视频目录。可以按同样格式加多行，记得同步改 VIDEO_DIRS。
+      # 注意是**可写**挂载：网页上传要写进来，删除是把文件移到 data/trash（rename 需要源目录写权限）。
+      # 如果你只打算在网页端浏览、不需要上传和删除，可以改成 `:/media/videos:ro` 更安全。
+      - ${VIDEO_HOST_DIR:-./videos}:/media/videos
+      # 数据库与缓存，必须可写
+      - ${DATA_HOST_DIR:-./data}:/data
+
+    # 内网自用，容器内以 root 运行以便兼容各 NAS 的目录属主。
+    # 如果你想降权，取消下面两行注释并把 DATA_HOST_DIR 的属主改成 1000:1000。
+    # user: "1000:1000"
+    # security_opt:
+    #   - no-new-privileges:true
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:6688/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 6s
+      start_period: 25s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

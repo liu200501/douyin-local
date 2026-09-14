@@ -1,0 +1,18 @@
+#!/bin/bash
+# 卸载前执行。
+#
+# 刻意不删除任何用户数据：视频是用户自己的文件，回收站（data/trash）里可能还有
+# 误删待恢复的内容。这里只把位置打出来，让用户自己决定。
+#
+# 想连数据一起清掉，卸载后手动执行：
+#   rm -rf "${TRIM_PKGVAR:-/var/apps/douyin-local/var}"
+
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/douyin-local/var}"
+VIDEO_DIR="${wizard_video_dir:-/vol1/1000/videos}"
+LOG="${TRIM_TEMP_LOGFILE:-/dev/stdout}"
+
+echo "即将卸载 douyin-local。以下内容不会被删除：" >> "$LOG"
+echo "  数据 / 回收站 / 换封装缓存：$VAR_DIR" >> "$LOG"
+echo "  视频目录（原片）：$VIDEO_DIR" >> "$LOG"
+
+exit 0

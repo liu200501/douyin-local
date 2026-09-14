@@ -1,0 +1,27 @@
+[
+  {
+    "stepTitle": "视频目录",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "修改后需要重新扫描才能生效：可以在应用内「媒体管理 → 全量重扫」里手动触发，或重启应用。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_video_dir",
+        "label": "视频目录",
+        "initValue": "/vol1/1000/videos",
+        "rules": [
+          {
+            "required": true,
+            "message": "请填写视频目录的绝对路径"
+          },
+          {
+            "pattern": "^/.+",
+            "message": "请填写以 / 开头的绝对路径"
+          }
+        ]
+      }
+    ]
+  }
+]

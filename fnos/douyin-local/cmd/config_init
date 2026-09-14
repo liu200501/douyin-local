@@ -1,0 +1,25 @@
+#!/bin/bash
+# 配置变更前执行。
+#
+# 只做校验和警告，永远 exit 0。原因是「先改配置、再建目录」是常见操作顺序，
+# 卡住配置反而让用户没法改回来。真正硬性的绝对路径校验在 wizard/config 的
+# rules 里做（pattern ^/.+），这里只是补一层运行期提醒。
+
+VIDEO_DIR="${wizard_video_dir:-/vol1/1000/videos}"
+LOG="${TRIM_TEMP_LOGFILE:-/dev/stdout}"
+
+case "$VIDEO_DIR" in
+  /*) ;;
+  *)
+    echo "警告：视频目录 \"$VIDEO_DIR\" 不是以 / 开头的绝对路径，容器会挂载失败。" >> "$LOG"
+    exit 0
+    ;;
+esac
+
+if [ ! -d "$VIDEO_DIR" ]; then
+  echo "提示：视频目录 $VIDEO_DIR 不存在。保存后请先创建该目录，否则容器启动会报 mount 失败。" >> "$LOG"
+elif [ ! -w "$VIDEO_DIR" ]; then
+  echo "提示：视频目录 $VIDEO_DIR 不可写，扫描播放正常，但网页上传和删除会失败。" >> "$LOG"
+fi
+
+exit 0

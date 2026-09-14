@@ -1,0 +1,9 @@
+#!/bin/bash
+# 升级后执行。只要镜像 tag 是 latest，应用中心会重新 pull 并重建容器。
+
+LOG="${TRIM_TEMP_LOGFILE:-/dev/stdout}"
+
+echo "升级完成。若页面还是旧版本，请在应用中心手动「停止 → 启动」一次，或执行：" >> "$LOG"
+echo "  docker pull ghcr.io/gaoyubao0917/douyin-local:latest" >> "$LOG"
+
+exit 0

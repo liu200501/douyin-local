@@ -1,0 +1,33 @@
+# 换行符统一：仓库里一律 LF，检出到工作区也保持 LF。
+#
+# 这条对飞牛 fpk 是硬要求：fnos/douyin-local/cmd/* 是生命周期脚本，
+# docker/entrypoint.sh 是容器入口，都在 Linux 上执行。
+# 一旦被转成 CRLF，shebang 会变成 "#!/bin/bash\r" → 报
+# "/bin/bash^M: bad interpreter"，而且这个错在 Windows 上测不出来。
+* text=auto eol=lf
+
+# Windows 批处理保留 CRLF：cmd.exe 对 LF 结尾的批处理在 goto/label 跳转时行为异常
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制资源别做任何转换
+*.png binary
+*.PNG binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.fpk binary
+*.mp4 binary
+*.mkv binary
+*.webm binary
+*.mov binary
+*.sqlite binary
+*.db binary
+
+# 锁文件在 diff / 合并里噪音太大，折叠掉
+package-lock.json -diff linguist-generated

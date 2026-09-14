@@ -1,0 +1,25 @@
+appname=douyin-local
+version=1.0.0
+display_name=本地抖音播放器
+desc=把你自己 NAS 里的短视频用抖音的方式刷起来：竖屏全屏上下无限滑动、自动播放、桌面封面墙、合集、标签、搜索、收藏与观看历史。<br>不抓取、不依赖任何在线接口，片源全部来自你挂载的本地目录。非原生格式（mkv/avi/flv/ts）由容器内的 ffmpeg 自动换封装成 mp4，几乎不占 CPU。
+source=thirdparty
+platform=x86
+
+maintainer=Gaoyubao
+maintainer_url=https://github.com/Gaoyubao0917
+distributor=Gaoyubao
+distributor_url=https://github.com/Gaoyubao0917
+
+os_min_version=1.0.0
+
+desktop_uidir=ui
+desktop_applaunchname=douyin-local.main
+
+service_port=6688
+checkport=true
+ctl_stop=true
+
+# 视频目录由向导字段 wizard_video_dir 提供，不使用系统授权目录机制
+disable_authorization_path=true
+
+changelog=1.0.0 首个版本：竖屏无限滑动播放、桌面封面墙、合集/标签/搜索、收藏与观看历史、mkv/avi/ts 自动换封装、上传与回收站。

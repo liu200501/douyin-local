@@ -1,0 +1,33 @@
+#!/bin/bash
+# douyin-local 生命周期入口。容器的启动/停止由应用中心按 docker-project 资源处理，
+# 这里只负责回答「应用现在是否在运行」。
+
+CONTAINER_NAME="douyin-local"
+
+is_running() {
+  docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null | grep -q '^true$'
+}
+
+case "$1" in
+  start)
+    # 应用中心会执行 app/docker/docker-compose.yaml，这里无需重复启动
+    exit 0
+    ;;
+
+  stop)
+    # 同上，停止也由应用中心负责
+    exit 0
+    ;;
+
+  status)
+    if is_running; then
+      exit 0
+    fi
+    exit 3
+    ;;
+
+  *)
+    echo "Unknown command: $1" > "${TRIM_TEMP_LOGFILE:-/dev/stderr}"
+    exit 1
+    ;;
+esac

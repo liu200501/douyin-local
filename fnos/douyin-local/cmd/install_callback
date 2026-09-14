@@ -1,0 +1,16 @@
+#!/bin/bash
+# 安装回调：只做提示，不阻塞安装。
+
+VIDEO_DIR="${wizard_video_dir:-/vol1/1000/videos}"
+
+if [ ! -d "$VIDEO_DIR" ]; then
+  echo "提示：视频目录 $VIDEO_DIR 当前不存在，安装后请在「应用设置」里改成实际存在的目录。" \
+    >> "${TRIM_TEMP_LOGFILE:-/dev/stdout}"
+fi
+
+if ! docker --version >/dev/null 2>&1; then
+  echo "警告：未检测到 docker 命令，应用中心将无法启动容器。" \
+    >> "${TRIM_TEMP_LOGFILE:-/dev/stdout}"
+fi
+
+exit 0

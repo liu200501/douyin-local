@@ -1,0 +1,17 @@
+# Intel 核显硬件加速覆盖文件
+#
+# 用法：docker compose -f docker-compose.yml -f docker-compose.hwaccel.yml up -d
+#
+# 默认流水线只做「换封装」（ffmpeg -c copy），不需要 GPU。
+# 这份覆盖只在你想让 ffmpeg 用上 VAAPI/QSV 时使用，例如以后开启 HEVC 转码。
+# 前提：宿主机的 /dev/dri 存在，且当前用户在 render/video 组里。
+
+services:
+  douyin-local:
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
+    environment:
+      HWACCEL: vaapi

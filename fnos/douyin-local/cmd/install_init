@@ -1,0 +1,20 @@
+#!/bin/bash
+# 安装前执行。只做「尽力准备」，任何失败都不阻断安装步骤本身。
+
+VIDEO_DIR="${wizard_video_dir:-/vol1/1000/videos}"
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/douyin-local/var}"
+LOG="${TRIM_TEMP_LOGFILE:-/dev/stdout}"
+
+# 数据目录（数据库、封面、换封装缓存、回收站）必须存在且可写，否则容器起来就崩
+mkdir -p "$VAR_DIR" 2>/dev/null || true
+
+# 视频目录通常已经在存储空间里了；不存在时尝试建一个，建不动就交给 callback 提示
+if [ ! -d "$VIDEO_DIR" ]; then
+  mkdir -p "$VIDEO_DIR" 2>/dev/null || true
+fi
+
+if [ ! -w "$VIDEO_DIR" ]; then
+  echo "提示：视频目录 $VIDEO_DIR 当前不可写，网页上传和删除功能会失败。" >> "$LOG"
+fi
+
+exit 0

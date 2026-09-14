@@ -1,0 +1,57 @@
+services:
+  douyin-local:
+    image: ghcr.io/gaoyubao0917/douyin-local:latest
+    container_name: douyin-local
+    restart: unless-stopped
+
+    ports:
+      - "${TRIM_SERVICE_PORT:-6688}:6688"
+
+    environment:
+      PORT: 6688
+      HOST: 0.0.0.0
+      TZ: Asia/Shanghai
+      LOG_LEVEL: info
+
+      DATA_DIR: /data
+      CACHE_DIR: /data/cache
+
+      VIDEO_DIRS: /media/videos
+      VIDEO_EXTS: mp4,m4v,mov,webm,ogv,mkv,avi,flv,ts,m2ts,wmv,mpg,mpeg,3gp
+
+      JOB_CONCURRENCY: 2
+      FFMPEG_THREADS: 1
+      HWACCEL: auto
+      SCAN_ON_START: "true"
+      RESCAN_INTERVAL: 0
+
+    volumes:
+      # wizard_video_dir 在「安装向导 / 应用设置」里配置，默认 /vol1/1000/videos
+      # 可写挂载：网页上传要写入，删除是移到 data/trash（rename 需要源目录写权限）
+      - "${wizard_video_dir:-/vol1/1000/videos}:/media/videos"
+      # 数据库、封面、换封装缓存、回收站
+      - "${TRIM_PKGVAR:-/var/apps/douyin-local/var}:/data"
+
+    # 想让 ffmpeg 用上 Intel 核显时取消下面注释（默认只换封装，不需要 GPU）
+    # devices:
+    #   - /dev/dri:/dev/dri
+    # group_add:
+    #   - video
+    #   - render
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:6688/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 6s
+      start_period: 25s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

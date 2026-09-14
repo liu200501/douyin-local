@@ -1,0 +1,8 @@
+#!/bin/bash
+# 配置变更回调：改了视频目录后提示需要重扫。
+
+echo "视频目录已更新为 ${wizard_video_dir:-/vol1/1000/videos}。" \
+  "如未自动扫描，请在应用内「媒体管理」里点一次「全量重扫」。" \
+  >> "${TRIM_TEMP_LOGFILE:-/dev/stdout}"
+
+exit 0

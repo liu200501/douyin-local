@@ -1,0 +1,11 @@
+#!/bin/bash
+# 卸载后执行。容器和镜像由应用中心按 docker-project 资源处理，这里只做收尾提示。
+
+LOG="${TRIM_TEMP_LOGFILE:-/dev/stdout}"
+
+if docker image inspect ghcr.io/gaoyubao0917/douyin-local:latest >/dev/null 2>&1; then
+  echo "镜像 ghcr.io/gaoyubao0917/douyin-local:latest 仍保留在本机。" >> "$LOG"
+  echo "彻底清理可执行：docker rmi ghcr.io/gaoyubao0917/douyin-local:latest" >> "$LOG"
+fi
+
+exit 0
