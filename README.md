@@ -202,7 +202,7 @@ fnos/douyin-local/
 │   ├── main                        # status 检查容器运行状态
 │   ├── install_init / install_callback      # 安装前建目录、安装后检查目录是否存在
 │   ├── upgrade_init / upgrade_callback      # 升级前提示数据保留、升级后提示拉新镜像
-│   ├── uninstall_init / uninstall_callback  # 卸载前列出不会删的数据、卸载后提示清镜像
+│   ├── uninstall_init / uninstall_callback  # 卸载前如实说明「清除本地数据」会删掉什么、卸载后提示清镜像
 │   └── config_init / config_callback        # 改目录前校验绝对路径、改完提示重扫
 ├── config/
 │   ├── privilege                   # run-as=package
@@ -231,16 +231,31 @@ fnos/douyin-local/
 | compose 的 `container_name` 与 `cmd/main` 里查的名字一致 | 应用中心永远显示「未运行」 |
 | 镜像地址无 `YOUR_GITHUB_NAME` 占位符 | 装上去 pull 失败（加 `--keep-going` 可强行打包） |
 | 打完包把 `cmd/*` 补成 `0755` | Windows 上 fnpack 只写 `0666`，到飞牛上脚本可能无法执行 |
+| `cmd/*` 是 LF 换行且首行为 `#!/bin/bash` | 脚本变 CRLF 后 shebang 成了 `#!/bin/bash\r`，飞牛上全部报 `bad interpreter` |
 | `manifest` 的 `checksum` 等于 `md5(app.tgz)` | fnpack 安装时会按这个字段校验，对不上会被拒收 |
 
-安装后**应用中心不会替你拉镜像**，它只会照 `app/docker/docker-compose.yaml` 里的
-`ghcr.io/gaoyubao0917/douyin-local:latest` 去 pull。所以要先让镜像存在：
+**卸载时数据不一定还在。** 飞牛卸载对话框里的「清除本地数据」一旦勾上，系统会连
+`/vol{n}/@appdata/douyin-local`（数据库、收藏、观看历史、封面与换封装缓存）一起删掉。
+视频原片在自己的目录里，不受影响。想留着就先备份：
 
 ```bash
-git push        # GitHub Actions 会自动构建并推送到 GHCR（见 .github/workflows/build.yml）
+cp -a /vol1/@appdata/douyin-local /vol1/1000/douyin-local-backup
 ```
 
-镜像推上去之前想先在飞牛上试，把 `fnos/douyin-local/app/docker/docker-compose.yaml`
+飞牛应用中心只负责按 `app/docker/docker-compose.yaml` 里的 `image:` 去 pull，
+它不会替你构建镜像。所以镜像必须先发到注册表里，否则装上就是「安装成功但起不来」。
+
+本仓库的镜像已经发布在 `ghcr.io/gaoyubao0917/douyin-local:latest`（由 GitHub Actions 构建），
+而且是公开包，飞牛上**免登录**就能拉。如果 fork 后自己用，第一次需要 push 一次：
+
+```bash
+git push        # 触发 .github/workflows/build.yml：verify → 真跑一次容器的 smoke → 推 GHCR
+```
+
+国内网络从 `ghcr.io` 拉取可能很慢或失败，这跟本应用无关：在飞牛的「Docker → 镜像加速」
+里配一个 registry mirror，或先把镜像 pull 到本地再由应用中心使用即可。
+
+想在镜像发出去之前先在飞牛上试，可以把 `fnos/douyin-local/app/docker/docker-compose.yaml`
 的 `image:` 换成你自己 `docker build` 出来的 tag，或者改用根目录的 `docker-compose.yml` 部署。
 
 **为什么视频目录用向导字段而不是系统授权目录？**

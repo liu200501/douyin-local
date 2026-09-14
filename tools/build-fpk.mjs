@@ -136,6 +136,34 @@ function checkJson(rel) {
   }
 }
 
+/**
+ * 生命周期脚本必须是 LF + 正确的 shebang。
+ *
+ * 这两个错误在 Windows 上完全看不出来，到飞牛上就是全体脚本 `bad interpreter`
+ * 或权限拒绝。Git 的 autocrlf 会把工作区文件转成 CRLF，所以在打包前拦一道。
+ */
+function checkScriptHealth() {
+  const badEol = []
+  const badShebang = []
+  for (const f of LIFECYCLE) {
+    const file = path.join(APP_DIR, 'cmd', f)
+    const buf = readFileSync(file)
+    if (buf.includes(0x0d)) badEol.push(`cmd/${f}`)
+    const firstLine = buf.toString('utf8').split('\n')[0]
+    if (!/^#!\/bin\/(ba)?sh$/.test(firstLine)) badShebang.push(`cmd/${f} → ${JSON.stringify(firstLine)}`)
+  }
+  if (badEol.length) {
+    fail(
+      `以下脚本含 CRLF 换行，Linux 上会报 bad interpreter：\n      - ${badEol.join('\n      - ')}\n` +
+        '      （检查 .gitattributes 里的 `* text=auto eol=lf`，或编辑器换行符设置）',
+    )
+  }
+  if (badShebang.length) {
+    fail(`以下脚本首行不是 #!/bin/bash：\n      - ${badShebang.join('\n      - ')}`)
+  }
+  log(`==> ${LIFECYCLE.length} 个生命周期脚本均为 LF + 正确 shebang`)
+}
+
 function checkManifest() {
   const raw = readFileSync(path.join(APP_DIR, 'manifest'), 'utf8')
   const get = (key) => raw.match(new RegExp(`^${key}=(.*)$`, 'm'))?.[1]?.trim()
@@ -328,6 +356,7 @@ async function main() {
   checkJson('config/resource')
   checkJson('app/ui/config')
   checkManifest()
+  checkScriptHealth()
   checkPlaceholders()
   ensureIcons()
 
