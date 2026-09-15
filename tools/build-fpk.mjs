@@ -315,10 +315,41 @@ function verifyFpk(fpkPath) {
   const inner = zlib.gunzipSync(
     tar.subarray(appTgz.offset + 512, appTgz.offset + 512 + appTgz.size),
   )
-  const innerNames = []
-  walkTar(inner, (e) => innerNames.push(e.name))
-  if (!innerNames.includes('docker/docker-compose.yaml')) {
+  const innerEntries = []
+  walkTar(inner, (e) => innerEntries.push(e))
+  const innerNames = innerEntries.map((e) => e.name)
+  const innerByName = new Map(innerEntries.map((e) => [e.name, e]))
+  if (!innerByName.has('docker/docker-compose.yaml')) {
     fail('app.tgz 里没有 docker/docker-compose.yaml，应用中心会无编排文件可用')
+  }
+
+  // 向导里的「镜像地址」默认值必须和 compose 的兜底值一致。不一致时，安装向导显示的
+  // 是一个地址、用户清空后实际用的是另一个地址，出问题极难排查（本机拉不动 = 装不上）。
+  const readInner = (n) => {
+    const e = innerByName.get(n)
+    return e ? inner.subarray(e.offset + 512, e.offset + 512 + e.size).toString('utf8') : null
+  }
+  const composeDefault = readInner('docker/docker-compose.yaml').match(
+    /\$\{wizard_image:-([^}]+)\}/,
+  )?.[1]
+  for (const w of ['wizard/install', 'wizard/config']) {
+    const e = byName.get(w)
+    if (!e) continue // 向导文件缺失由 fnpack 自己兜着
+    let parsed
+    try {
+      parsed = JSON.parse(tar.subarray(e.offset + 512, e.offset + 512 + e.size).toString('utf8'))
+    } catch (err) {
+      fail(`${w} 不是合法 JSON：${err.message}`)
+    }
+    const field = (parsed?.[0]?.items || []).find((i) => i.field === 'wizard_image')
+    if (!field) {
+      fail(`${w} 里没有 wizard_image 字段，用户在安装向导里将无法改镜像地址`)
+    } else if (composeDefault && field.initValue !== composeDefault) {
+      fail(
+        `${w} 的 wizard_image 默认值(${field.initValue}) 与 compose 的兜底值` +
+          `(${composeDefault}) 不一致，安装向导显示的地址会和实际拉取的不一样`,
+      )
+    }
   }
 
   // fnpack 会把 md5(app.tgz) 写进 manifest 的 checksum 字段，飞牛安装时按它校验。

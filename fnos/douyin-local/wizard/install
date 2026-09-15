@@ -1,6 +1,6 @@
 [
   {
-    "stepTitle": "选择视频目录",
+    "stepTitle": "选择视频目录与镜像来源",
     "items": [
       {
         "type": "tips",
@@ -19,6 +19,22 @@
           {
             "pattern": "^/.+",
             "message": "请填写以 / 开头的绝对路径"
+          }
+        ]
+      },
+      {
+        "type": "tips",
+        "helpText": "【镜像地址】保持默认即可。只有下面两种情况才需要改：\n1. 国内直连 ghcr.io 拉取太慢／失败 —— 改成你手头能通的加速地址；\n2. 你已经用 docker load 把镜像导入到本机 —— 改成导入后使用的那个 tag，这样就不会再联网拉取。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_image",
+        "label": "镜像地址",
+        "initValue": "ghcr.io/gaoyubao0917/douyin-local:latest",
+        "rules": [
+          {
+            "pattern": "^\\S+$",
+            "message": "镜像地址不能为空、且不能包含空格；留空会自动用默认地址"
           }
         ]
       }

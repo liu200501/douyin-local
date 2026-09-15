@@ -208,7 +208,7 @@ fnos/douyin-local/
 │   ├── privilege                   # run-as=package
 │   └── resource                    # 声明 docker-project
 ├── wizard/
-│   ├── install                     # 安装时填视频目录
+│   ├── install                     # 安装时填视频目录、镜像地址
 │   └── config                      # 之后在「应用设置」里改
 ├── ICON.PNG / ICON_256.PNG
 └── LICENSE
@@ -252,11 +252,85 @@ cp -a /vol1/@appdata/douyin-local /vol1/1000/douyin-local-backup
 git push        # 触发 .github/workflows/build.yml：verify → 真跑一次容器的 smoke → 推 GHCR
 ```
 
-国内网络从 `ghcr.io` 拉取可能很慢或失败，这跟本应用无关：在飞牛的「Docker → 镜像加速」
-里配一个 registry mirror，或先把镜像 pull 到本地再由应用中心使用即可。
+### 国内网络拉取太慢怎么办
 
-想在镜像发出去之前先在飞牛上试，可以把 `fnos/douyin-local/app/docker/docker-compose.yaml`
-的 `image:` 换成你自己 `docker build` 出来的 tag，或者改用根目录的 `docker-compose.yml` 部署。
+慢的根源不在本应用，而在 `ghcr.io`：镜像层（blob）请求会 **307 重定向到
+`pkg-containers.githubusercontent.com`**，这个域名国内直连基本不通。实测（本镜像 265MB）：
+
+| 拉取方式 | 实测速度 | 拉完预计 |
+| --- | --- | --- |
+| 直连 | 17 KB/s | 约 4 小时 20 分 |
+| 走代理 | 768 KB/s | 约 6 分钟 |
+
+> ⚠️ **在飞牛「Docker → 镜像加速」里配 registry mirror 对 ghcr.io 无效。**
+> Docker 的 `registry-mirrors` 只作用于 Docker Hub（`docker.io`），不会影响 `ghcr.io`。
+
+三条可行路线，按推荐顺序：
+
+**A. 给飞牛的 Docker 守护进程配代理（一劳永逸，推荐）**
+
+代理跑在局域网另一台机器上时（例如 Clash 在 PC 上），先在代理软件里打开
+「允许局域网连接」，然后 SSH 到飞牛：
+
+```bash
+sudo mkdir -p /etc/systemd/system/docker.service.d
+sudo tee /etc/systemd/system/docker.service.d/proxy.conf >/dev/null <<'EOF'
+[Service]
+Environment="HTTP_PROXY=http://192.168.1.10:7890"
+Environment="HTTPS_PROXY=http://192.168.1.10:7890"
+Environment="NO_PROXY=localhost,127.0.0.1,::1"
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+把 `192.168.1.10:7890` 换成你代理的实际地址。验证是否生效：
+
+```bash
+sudo systemctl show docker --property=Environment
+```
+
+两个容易踩的坑：
+
+- **`NO_PROXY` 里的 `127.0.0.1` 不能省。** 容器的环境变量会继承守护进程的，少了它，
+  容器内的健康检查（`fetch http://127.0.0.1:6688/api/health`）会绕去走代理，然后一直失败。
+- 飞牛系统更新后 `/etc/systemd/system/docker.service.d/` 可能被覆盖，更新完回来复查一次。
+
+**B. 离线导入（不想动 NAS 配置）**
+
+在任意一台能拉动的机器上：
+
+```bash
+docker pull ghcr.io/gaoyubao0917/douyin-local:latest
+docker save ghcr.io/gaoyubao0917/douyin-local:latest | gzip > douyin-local.tar.gz
+```
+
+拷到飞牛后：
+
+```bash
+gunzip -c douyin-local.tar.gz | docker load
+```
+
+再到 fpk 的**安装向导 → 镜像地址**（或装完后的「应用设置」）里填你已经导入的那个 tag，
+应用中心就不会再联网拉取。
+
+**C. 换用镜像加速地址**
+
+`image:` 现在走向导字段 `wizard_image`，**不用重新打包 fpk** 就能改。
+
+实测过的 GHCR 反代（2026-09 实测，仅供判断，随时可能失效）：
+
+| 地址 | 结果 |
+| --- | --- |
+| `ghcr.nju.edu.cn` | ❌ 只反代 API，层拉不动（60 秒零字节） |
+| `ghcr.dockerproxy.com` | ❌ 已失效（连接超时） |
+| `ghcr.geekery.cn` | ❌ 域名解析失败 |
+| `ghcr.chenby.cn` | ⚠️ 时通时不通（一次 602 KB/s，另一次 120 秒零字节） |
+
+结论是目前**没有稳定的 GHCR 国内反代**，A / B 比 C 靠谱。
+
+想在镜像发出去之前先在飞牛上试，把「镜像地址」改成你自己 `docker build` 出来的 tag，
+或者改用根目录的 `docker-compose.yml` 部署（它的 `IMAGE` 变量同样可覆盖）。
 
 **为什么视频目录用向导字段而不是系统授权目录？**
 飞牛的 `TRIM_DATA_ACCESSIBLE_PATHS` 是冒号分隔的**多路径**变量，没法直接作为一个 volume 挂载点。
@@ -382,6 +456,11 @@ Node 的入站连接（Windows 首次运行时会弹网络授权，选「专用�
 
 **NAS 风扇狂转**
 把 `JOB_CONCURRENCY` 降到 `1`，`FFMPEG_THREADS` 保持 `1`，并把 `RESCAN_INTERVAL` 设为 `0`。
+
+**在飞牛上拉镜像特别慢，或者装完一直显示「未运行」**
+大概率是卡在从 `ghcr.io` 拉镜像（层请求重定向到国内基本不通的域名）。
+配 registry mirror 对 `ghcr.io` 无效，需要走代理或离线导入 ——
+见 [国内网络拉取太慢怎么办](#国内网络拉取太慢怎么办)。
 
 **能暴露到公网吗**
 默认没有任何鉴权，**不要直接映射到公网**。放内网、走 tailscale/WireGuard，或在前面套一层带

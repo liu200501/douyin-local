@@ -1,6 +1,10 @@
 services:
   douyin-local:
-    image: ghcr.io/gaoyubao0917/douyin-local:latest
+    # 镜像地址可在「安装向导 / 应用设置」里改（wizard_image）。
+    # 国内直连 ghcr.io 拉层会非常慢甚至卡死（层请求会 307 到
+    # pkg-containers.githubusercontent.com），想换源、换本地已导入的 tag，
+    # 直接改这个向导字段即可，不用重新打包 fpk。
+    image: ${wizard_image:-ghcr.io/gaoyubao0917/douyin-local:latest}
     container_name: douyin-local
     restart: unless-stopped
 

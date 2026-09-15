@@ -1,10 +1,10 @@
 [
   {
-    "stepTitle": "视频目录",
+    "stepTitle": "视频目录与镜像来源",
     "items": [
       {
         "type": "tips",
-        "helpText": "修改后需要重新扫描才能生效：可以在应用内「媒体管理 → 全量重扫」里手动触发，或重启应用。"
+        "helpText": "视频目录改动后需要重新扫描才能生效：可以在应用内「媒体管理 → 全量重扫」里手动触发，或重启应用。"
       },
       {
         "type": "text",
@@ -19,6 +19,22 @@
           {
             "pattern": "^/.+",
             "message": "请填写以 / 开头的绝对路径"
+          }
+        ]
+      },
+      {
+        "type": "tips",
+        "helpText": "镜像地址默认 ghcr.io/gaoyubao0917/douyin-local:latest。改成别的地址后，保存设置会按新地址重新创建容器（本地已有的镜像不会重复下载）。\n国内直连 ghcr.io 较慢时，可在这里换成你能访问的加速地址，或先用 docker load 导入镜像、再填导入后的本地 tag。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_image",
+        "label": "镜像地址",
+        "initValue": "ghcr.io/gaoyubao0917/douyin-local:latest",
+        "rules": [
+          {
+            "pattern": "^\\S+$",
+            "message": "镜像地址不能为空、且不能包含空格；留空会自动用默认地址"
           }
         ]
       }
