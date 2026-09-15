@@ -246,10 +246,12 @@ cp -a /vol1/@appdata/douyin-local /vol1/1000/douyin-local-backup
 它不会替你构建镜像。所以镜像必须先发到注册表里，否则装上就是「安装成功但起不来」。
 
 本仓库的镜像已经发布在 `ghcr.io/gaoyubao0917/douyin-local:latest`（由 GitHub Actions 构建），
-而且是公开包，飞牛上**免登录**就能拉。如果 fork 后自己用，第一次需要 push 一次：
+而且是公开包，飞牛上**免登录**就能拉。CI 里还有一个可选的 `image-dockerhub` job，
+配好两个 secret 后会把同一个镜像同步一份到 Docker Hub（国内能吃到飞牛的镜像加速），
+详见 [国内网络拉取太慢怎么办](#国内网络拉取太慢怎么办)。如果 fork 后自己用，第一次需要 push 一次：
 
 ```bash
-git push        # 触发 .github/workflows/build.yml：verify → 真跑一次容器的 smoke → 推 GHCR
+git push        # 触发 .github/workflows/build.yml：verify → 真跑一次容器的 smoke → 推 GHCR（→ 可选同步 Docker Hub）
 ```
 
 ### 国内网络拉取太慢怎么办
@@ -327,7 +329,26 @@ gunzip -c douyin-local.tar.gz | docker load
 | `ghcr.geekery.cn` | ❌ 域名解析失败 |
 | `ghcr.chenby.cn` | ⚠️ 时通时不通（一次 602 KB/s，另一次 120 秒零字节） |
 
-结论是目前**没有稳定的 GHCR 国内反代**，A / B 比 C 靠谱。
+结论是目前**没有稳定的 GHCR 国内反代**，A / B / D 比 C 靠谱。
+
+**D. 走 Docker Hub（CI 配好 secret 后自动同步）**
+
+`build.yml` 里的 `image-dockerhub` job 会把 GHCR 上刚构建好的镜像**原样同步**一份到
+`docker.io/<你的用户名>/douyin-local:latest`。这条最省事的原因：飞牛内置的「镜像加速」
+**对 Docker Hub 有效**（对 ghcr.io 无效），所以配好加速器就能满速拉。
+
+启用方式 —— 仓库 `Settings → Secrets and variables → Actions → New repository secret`：
+
+| Secret | 值 |
+| --- | --- |
+| `DOCKERHUB_USERNAME` | 你的 Docker Hub 用户名 |
+| `DOCKERHUB_TOKEN` | Docker Hub 的 **Access Token**（权限选 Read & Write，**不是**登录密码） |
+
+没配这两个 secret 时该 job 会**自动跳过**，CI 不会变红。配好后重新 push 一次即可。
+之后把 fpk「安装向导 → 镜像地址」改成 `docker.io/<用户名>/douyin-local:latest`。
+
+该 job 里有一条断言会在推送后**匿名**去 Docker Hub 读一次 manifest ——
+Docker Hub 上的镜像仓库若被设成 private，飞牛上匿名拉就会失败，这一步会直接把它拦下来。
 
 想在镜像发出去之前先在飞牛上试，把「镜像地址」改成你自己 `docker build` 出来的 tag，
 或者改用根目录的 `docker-compose.yml` 部署（它的 `IMAGE` 变量同样可覆盖）。
@@ -391,7 +412,7 @@ douyin-local/
 ├── tools/make-icons.py          # 生成应用图标（纯标准库，无 Pillow 依赖）
 ├── tools/build-fpk.sh           # 打包 .fpk
 ├── tools/test-upload.mjs        # multipart 上传冒烟测试（含中文文件名）
-├── .github/workflows/build.yml  # CI：校验 → 镜像冒烟 → 构建推送 GHCR
+├── .github/workflows/build.yml  # CI：校验 → 镜像冒烟 → 构建推送 GHCR → 可选同步 Docker Hub
 ├── Dockerfile                   # 三阶段构建
 └── docker-compose*.yml
 ```
