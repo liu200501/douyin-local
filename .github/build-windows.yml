@@ -1,0 +1,81 @@
+name: build-windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  windows-portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install web deps and build frontend
+        working-directory: web
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Install server deps
+        working-directory: server
+        run: npm install --no-audit --no-fund
+
+      - name: Download Node 22 Windows runtime
+        shell: pwsh
+        run: |
+          $ver = "22.14.0"
+          $url = "https://nodejs.org/dist/v$ver/node-v$ver-win-x64.zip"
+          Invoke-WebRequest -Uri $url -OutFile node-win.zip
+          Expand-Archive node-win.zip -DestinationPath .
+          Rename-Item "node-v$ver-win-x64" "node-runtime"
+
+      - name: Download ffmpeg Windows build
+        shell: pwsh
+        run: |
+          $url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-tmp
+          $dir = Get-ChildItem ffmpeg-tmp -Directory | Select-Object -First 1
+          New-Item -ItemType Directory -Path ffmpeg-bin | Out-Null
+          Copy-Item "$($dir.FullName)\bin\ffmpeg.exe" ffmpeg-bin\
+          Copy-Item "$($dir.FullName)\bin\ffprobe.exe" ffmpeg-bin\
+
+      - name: Assemble portable package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path portable | Out-Null
+          Copy-Item server -Recurse portable\server
+          Copy-Item web\dist -Recurse portable\web-dist
+          Copy-Item node-runtime -Recurse portable\node-runtime
+          Copy-Item ffmpeg-bin -Recurse portable\ffmpeg-bin
+          Copy-Item start.bat portable\start-portable.bat
+          # 把依赖里的 .bin 之类不必要的东西清掉，减小体积（可选）
+
+      - name: Create start-portable.bat
+        shell: pwsh
+        run: |
+          @'
+          @echo off
+          setlocal
+          set PATH=%~dp0node-runtime;%~dp0ffmpeg-bin;%PATH%
+          set VIDEO_DIRS=%~dp0videos
+          set DATA_DIR=%~dp0data
+          set PORT=6688
+          cd /d %~dp0server
+          "%~dp0node-runtime\node.exe" src\index.js
+          pause
+          '@ | Out-File -Encoding ascii portable\start-portable.bat
+
+      - name: Zip portable package
+        shell: pwsh
+        run: Compress-Archive -Path portable\* -DestinationPath douyin-local-windows-portable.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: douyin-local-windows-portable
+          path: douyin-local-windows-portable.zip
